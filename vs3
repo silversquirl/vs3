@@ -1,0 +1,78 @@
+#!/bin/bash
+# --- Transformation functions ---
+vs3_transform_codeblock() {
+  local line
+  while read -r line && [[ "$line" != '$$$' ]]; do
+    echo "$line"
+  done
+}
+
+vs3_transform() {
+  local line
+  echo '_content='
+  while read -r line; do
+    if [[ "$line" = '$$$' ]]; then
+      vs3_transform_codeblock
+    else
+      echo -n '_content+='
+      if [[ "$line" =~ ^\ *'$>' ]]; then
+        printf '"$(%s)"' "${line#*$>}"
+      else
+        printf '%q' "$line"
+      fi
+      printf '"\n"\n'
+    fi
+  done
+  echo 'content="$_content"'
+}
+
+# --- Casually reimplementing make(1) ---
+vs3_needs_rebuild() {
+  if [[ -f "$target" ]]; then
+    smod="$(stat -c '%Y' -- "$source")"
+    tmod="$(stat -c '%Y' -- "$target")"
+    (( smod > tmod ))
+  else
+    return 0
+  fi
+}
+
+vs3_build() {
+  local source="$1"
+  shift
+  local target="$build_dir/$source.bash"
+  mkdir -p "${target%/*}"
+  vs3_needs_rebuild "$source" && vs3_transform "$@" < "$source" > "$target"
+  echo "$target"
+}
+
+# --- HTML helpers ---
+e() {
+  local esc="$*"
+  esc="${esc//&/&amp;}"
+  esc="${esc//>/&gt;}"
+  esc="${esc//</&lt;}"
+  esc="${esc//\"/&quot;}"
+  esc="${esc//\'/&apos;}"
+  echo "$esc"
+}
+
+attr() {
+  local aname="$1"
+  shift
+  echo "$aname=\"$(e "$*")\""
+}
+
+# --- Main ---
+# Include user configuration
+. ./config.bash
+
+# Default configuration options
+build_dir="${build_dir:-build}"
+tmp_dir="${tmp_dir:-"$build_dir/tmp"}"
+template_dir="${template_dir:-templates}"
+
+. "$(vs3_build "$1")"
+content="$(echo "$content" | markdown)"
+. "$(vs3_build "$template_dir/$template")"
+echo "$content"
