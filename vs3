@@ -39,6 +39,7 @@ vs3_needs_rebuild() {
 
 vs3_build() {
   local source="$1"
+  [[ -f "$source" ]] || exit 1
   shift
   local target="$build_dir/$source.bash"
   mkdir -p "${target%/*}"
