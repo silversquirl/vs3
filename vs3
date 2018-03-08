@@ -2,7 +2,7 @@
 # --- Transformation functions ---
 vs3_transform_codeblock() {
   local line
-  while read -r line && [[ "$line" != '$$$' ]]; do
+  while IFS= read -r line && [[ "$line" != '$$$' ]]; do
     echo "$line"
   done
 }
@@ -10,7 +10,7 @@ vs3_transform_codeblock() {
 vs3_transform() {
   local line
   echo '_content='
-  while read -r line; do
+  while IFS= read -r line; do
     if [[ "$line" = '$$$' ]]; then
       vs3_transform_codeblock
     else
